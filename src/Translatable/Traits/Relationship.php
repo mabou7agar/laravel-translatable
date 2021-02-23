@@ -16,6 +16,7 @@ trait Relationship
      */
     public function getRelationKey(): string
     {
+
         return $this->getTranslationRelationKey();
     }
 
@@ -24,6 +25,7 @@ trait Relationship
      */
     public function getTranslationModelName(): string
     {
+
         return $this->translationModel ?: $this->getTranslationModelNameDefault();
     }
 
@@ -32,13 +34,14 @@ trait Relationship
      */
     public function getTranslationModelNameDefault(): string
     {
-        $modelName = get_class($this);
+        $modelName = 'App\\Models\\';
 
         if ($namespace = $this->getTranslationModelNamespace()) {
             $modelName = $namespace.'\\'.class_basename(get_class($this));
+
         }
 
-        return $modelName.config('translatable.translation_suffix', 'Translation');
+        return $modelName.config('translatable.translation_suffix', '');
     }
 
     /**
@@ -54,9 +57,13 @@ trait Relationship
      */
     public function getTranslationRelationKey(): string
     {
+
+        return 'foreign_key';
         if ($this->translationForeignKey) {
+
             return $this->translationForeignKey;
         }
+
 
         return $this->getForeignKey();
     }

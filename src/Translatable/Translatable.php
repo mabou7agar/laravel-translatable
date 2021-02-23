@@ -32,6 +32,7 @@ trait Translatable
     public static function bootTranslatable(): void
     {
         static::saved(function (Model $model) {
+
             /* @var Translatable $model */
             return $model->saveTranslations();
         });
@@ -114,6 +115,7 @@ trait Translatable
 
     public function fill(array $attributes)
     {
+
         foreach ($attributes as $key => $values) {
             if (
                 $this->getLocalesHelper()->has($key)
@@ -122,6 +124,7 @@ trait Translatable
                 $this->getTranslationOrNew($key)->fill($values);
                 unset($attributes[$key]);
             } else {
+
                 [$attribute, $locale] = $this->getAttributeAndLocale($key);
 
                 if (
@@ -139,6 +142,7 @@ trait Translatable
 
     public function getAttribute($key)
     {
+
         [$attribute, $locale] = $this->getAttributeAndLocale($key);
 
         if ($this->isTranslationAttribute($attribute)) {
@@ -192,6 +196,7 @@ trait Translatable
         $locale = $locale ?: $this->locale();
         $withFallback = $withFallback === null ? $this->useFallback() : $withFallback;
         $fallbackLocale = $this->getFallbackLocale($locale);
+
 
         if ($translation = $this->getTranslationByLocaleKey($locale)) {
             return $translation;
@@ -254,7 +259,7 @@ trait Translatable
 
         foreach ($this->translations as $translation) {
             foreach ($this->translatedAttributes as $attr) {
-                $translations[$translation->{$this->getLocaleKey()}][$attr] = $translation->{$attr};
+                $translations[$translation->{$this->getLocaleKey()}][$attr] = $translation->value;
             }
         }
 
@@ -368,13 +373,25 @@ trait Translatable
         }
 
         foreach ($this->translations as $translation) {
+            if(!is_null($translation->attribute) )
+            $translationAttr = $translation->attribute;
             if ($saved && $this->isTranslationDirty($translation)) {
                 if (! empty($connectionName = $this->getConnectionName())) {
                     $translation->setConnection($connectionName);
                 }
 
-                $translation->setAttribute($this->getTranslationRelationKey(), $this->getKey());
-                $saved = $translation->save();
+                            foreach ($translation->getAttributes() as $key=>$value)
+                            {
+                                if(!in_array($key,$translation->getFillable()))$translationAttr = $key;
+                            }
+                        $translation->setAttribute('value', $translation[$translationAttr]);
+                        $translation->setAttribute('column_name', $translationAttr);
+                        unset($translation[$translationAttr]);
+                        unset($translation['attribute']);
+
+                        $translation->setAttribute('foreign_key', $this->getKey());
+                        $translation->setAttribute('table_name', $this->getTable());
+                         $saved = $translation->save();
             }
         }
 
@@ -383,15 +400,16 @@ trait Translatable
 
     protected function getAttributeAndLocale(string $key): array
     {
+
         if (Str::contains($key, ':')) {
             return explode(':', $key);
         }
-
         return [$key, $this->locale()];
     }
 
     protected function getAttributeOrFallback(?string $locale, string $attribute)
     {
+
         $translation = $this->getTranslation($locale);
 
         if (
@@ -405,6 +423,7 @@ trait Translatable
         }
 
         if ($translation instanceof Model) {
+
             return $translation->$attribute;
         }
 
@@ -429,10 +448,12 @@ trait Translatable
             && $this->translation
             && $this->translation->getAttribute($this->getLocaleKey()) == $key
         ) {
+            $this->translation->setAttribute($this->translation->getAttribute('column_name'),$this->translation->getAttribute('value'));
             return $this->translation;
         }
-
-        return $this->translations->firstWhere($this->getLocaleKey(), $key);
+        $data =  $this->translations->firstWhere($this->getLocaleKey(), $key);
+        $data->setAttribute($data->getAttribute('column_name'),$data->getAttribute('value'));
+        return  $data;
     }
 
     protected function toArrayAlwaysLoadsTranslations(): bool
